@@ -22,47 +22,14 @@
     </div>
   {:else}
     <div class="content">
-      <h1>ようこそ！</h1>
-      <p>このサイトは現在準備中です。</p>
+      <h1>Home</h1>
+      <p>ようこそ！このサイトは準備中です。</p>
       <p>もうしばらくお待ちください。</p>
     </div>
   {/if}
 </div>
 
 <style>
-  :global(body) {
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(135deg, #e0ffff, #40e0d0);
-    font-family: 'M PLUS Rounded 1c', sans-serif;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .container {
-    text-align: center;
-    background-color: rgba(255, 255, 255, 0.8);
-    border-radius: 20px;
-    padding: 2rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 255, 0.1);
-    max-width: 80%;
-    margin: 0 auto;
-  }
-  
-  h1 {
-    color: #0000ff;
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-  }
-  
-  p {
-    color: #333;
-    font-size: 1.2rem;
-    margin: 0.5rem 0;
-  }
-  
   .loading {
     display: flex;
     flex-direction: column;
@@ -74,23 +41,14 @@
   .spinner {
     width: 60px;
     height: 60px;
-    border: 8px solid rgba(64, 224, 208, 0.3);
+    border: 8px solid rgba(197, 208, 233, 0.3); /* Angelic Lilac with transparency */
     border-radius: 50%;
-    border-top-color: #0000ff;
+    border-top-color: #8CA0C9; /* Seraph Blue */
     animation: spin 1s ease-in-out infinite;
     margin-bottom: 1rem;
   }
   
   @keyframes spin {
     to { transform: rotate(360deg); }
-  }
-  
-  .content {
-    animation: fadeIn 0.5s ease-in;
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
   }
 </style>
