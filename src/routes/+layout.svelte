@@ -1,6 +1,7 @@
 <script>
-	import { SpeedInsights } from '@vercel/speed-insights/svelte';
+	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
+
+	injectSpeedInsights();
 </script>
 
 <slot />
-<SpeedInsights /> 
