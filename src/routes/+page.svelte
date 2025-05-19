@@ -1,11 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { goto, preloadData } from '$app/navigation';
+  import { page } from '$app/stores';
   
   let loading = true;
   let loadingProgress = 0;
   let loadingInterval: ReturnType<typeof setInterval> | null = null;
-  let portrait = '/images/portrait.svg'; // ポートレート画像のパス
+  let portrait = '/images/portrait.jpg'; // ポートレート画像のパスを更新
   
   // ソーシャルメディアリンク
   const socialLinks = [
@@ -17,38 +18,44 @@
   ];
   
   onMount(async () => {
-    // プリロードするルート
-    const routes = [
-      '/career',
-      '/about-me',
-      '/works',
-      '/blog',
-      '/fun'
-    ];
-    
-    // ロード進捗のシミュレーション
-    loadingInterval = setInterval(() => {
-      if (loadingProgress < 90) {
-        loadingProgress += 5;
-      }
-    }, 200);
-    
-    // すべてのルートをプリロード
-    try {
-      await Promise.all(routes.map(route => preloadData(route)));
-      // プリロードが完了したら100%に
-      loadingProgress = 100;
+    // ページが直接アクセスされた場合のみローディングを表示
+    if ($page.url.pathname === '/') {
+      // プリロードするルート
+      const routes = [
+        '/career',
+        '/about-me',
+        '/works',
+        '/blog',
+        '/fun'
+      ];
       
-      // 少し待ってからローディング表示を消す
-      setTimeout(() => {
+      // ロード進捗のシミュレーション
+      loadingInterval = setInterval(() => {
+        if (loadingProgress < 90) {
+          loadingProgress += 5;
+        }
+      }, 200);
+      
+      // すべてのルートをプリロード
+      try {
+        await Promise.all(routes.map(route => preloadData(route)));
+        // プリロードが完了したら100%に
+        loadingProgress = 100;
+        
+        // 少し待ってからローディング表示を消す
+        setTimeout(() => {
+          if (loadingInterval) clearInterval(loadingInterval);
+          loading = false;
+        }, 500);
+      } catch (error) {
+        console.error('プリロードエラー:', error);
+        // エラーが発生しても、ユーザーにページを表示
+        loadingProgress = 100;
         if (loadingInterval) clearInterval(loadingInterval);
         loading = false;
-      }, 500);
-    } catch (error) {
-      console.error('プリロードエラー:', error);
-      // エラーが発生しても、ユーザーにページを表示
-      loadingProgress = 100;
-      if (loadingInterval) clearInterval(loadingInterval);
+      }
+    } else {
+      // 他のページから遷移した場合はローディングを表示しない
       loading = false;
     }
   });
@@ -120,6 +127,12 @@
     justify-content: center;
     padding: 2rem;
     width: 100%;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: white;
+    z-index: 1000;
   }
   
   .spinner {
