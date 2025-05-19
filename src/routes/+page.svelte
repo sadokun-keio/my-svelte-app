@@ -2,12 +2,12 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto, preloadData } from '$app/navigation';
   import { page } from '$app/stores';
-  import { base } from '$app/paths';
+  import portraitImage from '$lib/images/portrait.jpg';
   
   let loading = true;
   let loadingProgress = 0;
   let loadingInterval: ReturnType<typeof setInterval> | null = null;
-  let portrait = `${base}/images/portrait.jpg`; // ポートレート画像のパスを修正
+  let portrait = portraitImage; // インポートした画像を使用
   
   // ソーシャルメディアリンク
   const socialLinks = [
