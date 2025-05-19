@@ -2,11 +2,12 @@
   import { onMount, onDestroy } from 'svelte';
   import { goto, preloadData } from '$app/navigation';
   import { page } from '$app/stores';
+  import { base } from '$app/paths';
   
   let loading = true;
   let loadingProgress = 0;
   let loadingInterval: ReturnType<typeof setInterval> | null = null;
-  let portrait = 'images/portrait.jpg'; // ポートレート画像のパスを修正
+  let portrait = `${base}/images/portrait.jpg`; // ポートレート画像のパスを修正
   
   // ソーシャルメディアリンク
   const socialLinks = [
@@ -27,7 +28,7 @@
     },
     { 
       name: 'Pixiv', 
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/Pixiv_logo.svg',
+      icon: 'https://cdn.brandfetch.io/idIlKj_n7C/w/400/h/400/theme/dark/icon.jpeg?c=1dxbfHSJFAPEGdCLU4o5B',
       url: 'https://pixiv.net/users/your_userid'
     },
     { 
@@ -153,6 +154,7 @@
     left: 0;
     background-color: white;
     z-index: 1000;
+    box-sizing: border-box;
   }
   
   .spinner {
@@ -203,14 +205,23 @@
       padding: 1rem;
     }
     
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border-width: 5px;
+    }
+    
     .progress-bar {
-      width: 90%;
+      width: 80%;
+      max-width: 240px;
     }
   }
   
   .portrait {
     flex: 1;
     min-width: 200px;
+    display: flex;
+    justify-content: center;
   }
   
   .portrait img {
@@ -218,6 +229,7 @@
     max-width: 300px;
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(140, 160, 201, 0.3);
+    object-fit: cover;
   }
   
   .hero-text {
