@@ -6,15 +6,35 @@
   let loading = true;
   let loadingProgress = 0;
   let loadingInterval: ReturnType<typeof setInterval> | null = null;
-  let portrait = '/images/portrait.jpg'; // ポートレート画像のパスを更新
+  let portrait = 'images/portrait.jpg'; // ポートレート画像のパスを修正
   
   // ソーシャルメディアリンク
   const socialLinks = [
-    { name: 'X (Twitter)', icon: '/icons/twitter.svg' },
-    { name: 'Instagram', icon: '/icons/instagram.svg' },
-    { name: 'LinkedIn', icon: '/icons/linkedin.svg' },
-    { name: 'Pixiv', icon: '/icons/pixiv.svg' },
-    { name: 'GitHub', icon: '/icons/github.svg' }
+    { 
+      name: 'X (Twitter)', 
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/5/57/X_logo_2023_%28white%29.png',
+      url: 'https://twitter.com/your_username'
+    },
+    { 
+      name: 'Instagram', 
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Instagram_logo_2022.svg',
+      url: 'https://instagram.com/your_username'
+    },
+    { 
+      name: 'LinkedIn', 
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+      url: 'https://linkedin.com/in/your_username'
+    },
+    { 
+      name: 'Pixiv', 
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/Pixiv_logo.svg',
+      url: 'https://pixiv.net/users/your_userid'
+    },
+    { 
+      name: 'GitHub', 
+      icon: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png',
+      url: 'https://github.com/your_username'
+    }
   ];
   
   onMount(async () => {
@@ -109,9 +129,9 @@
         <h2>Contacts and Social Media</h2>
         <div class="social-icons">
           {#each socialLinks as link}
-            <div class="social-icon">
+            <a href={link.url} target="_blank" rel="noopener noreferrer" class="social-icon">
               <img src={link.icon} alt={link.name} />
-            </div>
+            </a>
           {/each}
         </div>
       </section>
@@ -138,17 +158,18 @@
   .spinner {
     width: 60px;
     height: 60px;
-    border: 8px solid rgba(197, 208, 233, 0.3); /* Angelic Lilac with transparency */
+    border: 8px solid rgba(197, 208, 233, 0.3);
     border-radius: 50%;
-    border-top-color: #8CA0C9; /* Seraph Blue */
+    border-top-color: #8CA0C9;
     animation: spin 1s ease-in-out infinite;
     margin-bottom: 1rem;
   }
   
   .progress-bar {
     width: 80%;
+    max-width: 300px;
     height: 10px;
-    background-color: #DCDAE7; /* Mist Lavender */
+    background-color: #DCDAE7;
     border-radius: 5px;
     margin-top: 1rem;
     overflow: hidden;
@@ -176,6 +197,14 @@
     .hero {
       flex-direction: column;
       gap: 1rem;
+    }
+    
+    .loading {
+      padding: 1rem;
+    }
+    
+    .progress-bar {
+      width: 90%;
     }
   }
   
@@ -219,22 +248,24 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background-color: #C5D0E9; /* Angelic Lilac */
+    background-color: #C5D0E9;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: transform 0.3s ease, background-color 0.3s ease;
+    text-decoration: none;
   }
   
   .social-icon:hover {
     transform: translateY(-5px);
-    background-color: #A8BADE; /* Dream Blue */
+    background-color: #A8BADE;
   }
   
   .social-icon img {
     width: 24px;
     height: 24px;
+    object-fit: contain;
   }
   
   .inline-link {
