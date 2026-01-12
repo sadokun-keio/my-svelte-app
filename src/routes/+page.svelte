@@ -6,7 +6,6 @@
 
 	let loading = $state(true);
 	let loadingProgress = $state(0);
-	let loadingInterval: ReturnType<typeof setInterval> | null = null;
 	const portrait = portraitImage; // インポートした画像を使用
 
 	// ソーシャルメディアリンク
@@ -42,32 +41,73 @@
 		const init = async () => {
 			// ページが直接アクセスされた場合のみローディングを表示
 			if ($page.url.pathname === '/') {
-				// プリロードするルート
+				let currentProgress = 0;
+
+				// 進行状況を更新する関数
+				const updateProgress = (amount: number) => {
+					currentProgress = Math.min(currentProgress + amount, 100);
+					loadingProgress = currentProgress;
+				};
+
+				// ステージごとの重み付け
+				// 初期化: 10%
+				updateProgress(10);
+
+				// 1. フォント読み込み監視 (20%)
+				const fontLoad = document.fonts.ready
+					.then(() => {
+						updateProgress(20);
+					})
+					.catch(() => updateProgress(20)); // エラーでも進める
+
+				// 2. 画像読み込み (30%)
+				// 画像プリロード用のヘルパー関数
+				const preloadImage = (src: string) => {
+					return new Promise<void>((resolve) => {
+						const img = new Image();
+						img.onload = () => resolve();
+						img.onerror = () => resolve(); // エラーでも止まらないようにする
+						img.src = src;
+					});
+				};
+
+				const imageLoad = (async () => {
+					// 読み込むべき全画像のリストを作成
+					const imagesToLoad = [portrait, ...socialLinks.map((link) => link.icon)];
+
+					// 全ての画像を並列で読み込む
+					await Promise.all(imagesToLoad.map((src) => preloadImage(src)));
+					updateProgress(30);
+				})();
+
+				// 3. ルートプリロード (40%)
 				const routes = ['/career', '/about-me', '/works', '/blog', '/fun'];
+				const routeLoad = Promise.all(routes.map((route) => preloadData(route)))
+					.then(() => updateProgress(40))
+					.catch((e) => {
+						console.error('プリロードエラー:', e);
+						updateProgress(40);
+					});
 
-				// ロード進捗のシミュレーション
-				loadingInterval = setInterval(() => {
-					if (loadingProgress < 90) {
-						loadingProgress += 5;
-					}
-				}, 200);
+				// 最低でも500msは表示して、ちらつきを防ぐ
+				const minTime = new Promise((resolve) => setTimeout(resolve, 500));
 
-				// すべてのルートをプリロード
+				// 最大3秒でタイムアウトさせる（無限ロード防止）
+				const maxTime = new Promise((resolve) => setTimeout(resolve, 3000));
+
 				try {
-					await Promise.all(routes.map((route) => preloadData(route)));
-					// プリロードが完了したら100%に
+					// 全て完了するか、タイムアウトまで待機
+					await Promise.race([Promise.all([fontLoad, imageLoad, routeLoad, minTime]), maxTime]);
+
 					loadingProgress = 100;
 
 					// 少し待ってからローディング表示を消す
 					setTimeout(() => {
-						if (loadingInterval) clearInterval(loadingInterval);
 						loading = false;
-					}, 500);
+					}, 300);
 				} catch (error) {
-					console.error('プリロードエラー:', error);
-					// エラーが発生しても、ユーザーにページを表示
+					console.error('ローディングエラー:', error);
 					loadingProgress = 100;
-					if (loadingInterval) clearInterval(loadingInterval);
 					loading = false;
 				}
 			} else {
@@ -77,12 +117,6 @@
 		};
 
 		init();
-
-		return () => {
-			if (loadingInterval) {
-				clearInterval(loadingInterval);
-			}
-		};
 	});
 
 	function navigateToAboutMe() {
