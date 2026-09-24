@@ -3,8 +3,9 @@
 	import { goto, preloadData } from '$app/navigation';
 	import { page } from '$app/stores';
 	import portraitImage from '$lib/images/portrait.jpg';
+	import { loadingState } from '$lib/loadingState';
 
-	let loading = $state(true);
+	let loading = $state(!loadingState.done);
 	let loadingProgress = $state(0);
 	const portrait = portraitImage; // インポートした画像を使用
 
@@ -40,7 +41,8 @@
 	onMount(() => {
 		const init = async () => {
 			// ページが直接アクセスされた場合のみローディングを表示
-			if ($page.url.pathname === '/') {
+			if (!loadingState.done && $page.url.pathname === '/') {
+				loadingState.done = true;
 				let currentProgress = 0;
 
 				// 進行状況を更新する関数
