@@ -57,11 +57,13 @@
 		status = (j.ok ? '🚀 ' : '⚠ ') + j.log;
 	}
 
+	// execCommand keeps the browser's native undo stack, so ⌘Z / ⇧⌘Z work
 	function insert(text: string) {
-		const s = textarea.selectionStart, e = textarea.selectionEnd;
-		cur.body = cur.body.slice(0, s) + text + cur.body.slice(e);
-		changed();
-		requestAnimationFrame(() => { textarea.focus(); textarea.selectionStart = textarea.selectionEnd = s + text.length; });
+		textarea.focus();
+		if (!document.execCommand('insertText', false, text)) {
+			textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end');
+			textarea.dispatchEvent(new Event('input', { bubbles: true }));
+		}
 	}
 	function wrap(a: string, b = a) {
 		const s = textarea.selectionStart, e = textarea.selectionEnd;
@@ -147,14 +149,14 @@
 </div>
 
 <style>
-	.admin { display: grid; grid-template-columns: 240px 1fr; gap: 1rem; padding: 1rem; height: calc(100vh - 80px); box-sizing: border-box; color: #334; text-align: left; }
+	.admin { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 1rem; padding: 1rem; height: calc(100vh - 80px); box-sizing: border-box; color: #334; text-align: left; }
 	aside { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
 	aside ul { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
 	aside li button { width: 100%; text-align: left; display: grid; padding: 0.5rem 0.7rem; margin-bottom: 4px; }
 	aside li button.active { background: rgba(140, 160, 201, 0.4); }
 	aside small { opacity: 0.6; }
 	.empty { opacity: 0.6; padding: 0.5rem; }
-	main { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
+	main { min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
 	.fields { display: grid; gap: 0.5rem; }
 	.row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
 	.row label { display: flex; gap: 0.3rem; align-items: center; font-size: 0.85rem; }
@@ -167,9 +169,9 @@
 	.primary { background: #8ca0c9; color: #111; font-weight: 700; }
 	.publish { background: #4caf7a; color: #fff; font-weight: 700; padding: 0.6rem; }
 	.danger { border-color: #d66; color: #f99; }
-	.editor { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; flex: 1; min-height: 0; }
-	textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size: 0.95rem; line-height: 1.7; height: 100%; box-sizing: border-box; }
-	.preview { overflow-y: auto; padding: 0 1rem; border: 1px solid rgba(140, 160, 201, 0.2); border-radius: 8px; line-height: 1.9; }
+	.editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.75rem; flex: 1; min-height: 0; }
+	textarea { width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: hidden; resize: none; font-family: ui-monospace, Menlo, monospace; font-size: 0.95rem; line-height: 1.7; height: 100%; box-sizing: border-box; }
+	.preview { min-width: 0; overflow-wrap: anywhere; overflow-y: auto; padding: 0 1rem; border: 1px solid rgba(140, 160, 201, 0.2); border-radius: 8px; line-height: 1.9; }
 	.preview :global(img) { max-width: 100%; border-radius: 8px; }
 	.preview :global(pre) { background: rgba(0, 0, 0, 0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; }
 	.preview :global(blockquote) { border-left: 4px solid #8ca0c9; margin: 0; padding-left: 1rem; opacity: 0.85; }

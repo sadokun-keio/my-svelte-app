@@ -5,5 +5,5 @@ export const prerender = false;
 export async function POST({ request }) {
 	guard();
 	const { body } = await request.json();
-	return json({ html: marked.parse(body || '', { async: false }) });
+	return json({ html: marked.parse(body || '', { async: false, breaks: true }) });
 }

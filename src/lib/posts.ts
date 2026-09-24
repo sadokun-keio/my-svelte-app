@@ -24,7 +24,7 @@ export function toPost(slug: string, raw: string): Post {
 		tags: (data.tags || '').replace(/^\[|\]$/g, '').split(',').map((t) => t.trim()).filter(Boolean),
 		draft: data.draft === 'true',
 		body,
-		html: marked.parse(body, { async: false }) as string
+		html: marked.parse(body, { async: false, breaks: true }) as string
 	};
 }
 
