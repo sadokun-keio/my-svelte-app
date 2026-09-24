@@ -65,6 +65,18 @@
 			textarea.dispatchEvent(new Event('input', { bubbles: true }));
 		}
 	}
+	// 選択範囲の各行の先頭に記号を付ける（未選択なら新しい行を作る）
+	function prefixLines(mark: string) {
+		const s = textarea.selectionStart, e = textarea.selectionEnd;
+		if (s === e) return insert((s > 0 && cur.body[s - 1] !== '\n' ? '\n' : '') + mark);
+		const ls = cur.body.lastIndexOf('\n', s - 1) + 1;
+		const le = cur.body.endsWith('\n', e) && e > s ? e - 1 : e;
+		const lines = cur.body.slice(ls, le).split('\n');
+		const out = lines.map((l) => (l.trim() ? mark + l.replace(/^(\s*)([-*+]|>)\s+/, '$1') : l)).join('\n');
+		textarea.setSelectionRange(ls, le);
+		insert(out);
+		textarea.setSelectionRange(ls, ls + out.length);
+	}
 	function wrap(a: string, b = a) {
 		const s = textarea.selectionStart, e = textarea.selectionEnd;
 		insert(a + (cur.body.slice(s, e) || 'テキスト') + b);
@@ -123,8 +135,8 @@
 			<button onclick={() => wrap('**')}><b>B</b></button>
 			<button onclick={() => wrap('*')}><i>I</i></button>
 			<button onclick={() => wrap('[', '](https://)')}>リンク</button>
-			<button onclick={() => insert('\n- ')}>リスト</button>
-			<button onclick={() => insert('\n> ')}>引用</button>
+			<button onclick={() => prefixLines('- ')}>リスト</button>
+			<button onclick={() => prefixLines('> ')}>引用</button>
 			<button onclick={() => wrap('\n```\n', '\n```\n')}>コード</button>
 			<label class="btn">🖼 画像<input type="file" accept="image/*" multiple hidden onchange={(e) => upload(e.currentTarget.files)} /></label>
 			<span class="spacer"></span>
@@ -149,7 +161,7 @@
 </div>
 
 <style>
-	.admin { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 1rem; padding: 1rem; height: calc(100vh - 80px); box-sizing: border-box; color: #334; text-align: left; }
+	.admin { width: 100%; max-width: 100%; align-self: stretch; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 1rem; padding: 1rem; height: calc(100vh - 80px); box-sizing: border-box; color: #334; text-align: left; }
 	aside { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
 	aside ul { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
 	aside li button { width: 100%; text-align: left; display: grid; padding: 0.5rem 0.7rem; margin-bottom: 4px; }
@@ -172,6 +184,10 @@
 	.editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.75rem; flex: 1; min-height: 0; }
 	textarea { width: 100%; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; overflow-x: hidden; resize: none; font-family: ui-monospace, Menlo, monospace; font-size: 0.95rem; line-height: 1.7; height: 100%; box-sizing: border-box; }
 	.preview { min-width: 0; overflow-wrap: anywhere; overflow-y: auto; padding: 0 1rem; border: 1px solid rgba(140, 160, 201, 0.2); border-radius: 8px; line-height: 1.9; }
+	.preview :global(p), .preview :global(li) { font-size: 1rem; color: #334; margin: 0.6rem 0; }
+	.preview :global(ul) { list-style: disc; padding-left: 1.6rem; }
+	.preview :global(ol) { list-style: decimal; padding-left: 1.6rem; }
+	.preview :global(li) { margin: 0.2rem 0; }
 	.preview :global(img) { max-width: 100%; border-radius: 8px; }
 	.preview :global(pre) { background: rgba(0, 0, 0, 0.3); padding: 1rem; border-radius: 8px; overflow-x: auto; }
 	.preview :global(blockquote) { border-left: 4px solid #8ca0c9; margin: 0; padding-left: 1rem; opacity: 0.85; }
