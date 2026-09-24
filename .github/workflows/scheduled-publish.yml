@@ -3,19 +3,36 @@ on:
   schedule:
     - cron: '*/30 * * * *' # 30分ごと（GitHubの都合で数分〜十数分遅れることあり）
   workflow_dispatch:
+permissions:
+  contents: read
+  deployments: read
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: 予約時刻を過ぎた記事があれば再デプロイ
         env:
           HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          info=$(curl -fsSL "https://sadokun.blue/build-info.json?t=$(date +%s)") || { echo "build-info.json を取得できません"; exit 0; }
-          echo "$info"
-          due=$(echo "$info" | jq --arg now "$(date -u +%s)" '[.pending[] | select((.publishAt | sub("\\+09:00$"; "") | strptime("%Y-%m-%dT%H:%M:%S") | mktime) - 32400 <= ($now | tonumber))] | length')
-          echo "公開時刻を過ぎた予約記事: $due 件"
-          if [ "$due" -gt 0 ]; then
+          # サイトは Vercel のボット対策で Actions から読めないため、リポジトリの記事と
+          # 最後の本番デプロイ時刻を比べる：「最後のデプロイ後に公開時刻が来た記事」があれば作り直す
+          last=$(gh api "repos/${{ github.repository }}/deployments?environment=Production&per_page=1" -q '.[0].created_at')
+          last_s=$(date -u -d "$last" +%s); now_s=$(date -u +%s)
+          echo "最後の本番デプロイ: $last"
+          due=0
+          for f in src/posts/*.md; do
+            fm=$(awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$f")
+            echo "$fm" | grep -q '^draft: true' && continue
+            at=$(echo "$fm" | sed -n 's/^publishAt: *//p' | tr -d '"')
+            [ -z "$at" ] && continue
+            at_s=$(date -u -d "$at" +%s)
+            if [ "$at_s" -le "$now_s" ] && [ "$at_s" -gt "$last_s" ]; then echo "公開時刻を過ぎた予約記事: $f ($at)"; due=1; fi
+          done
+          if [ "$due" = 1 ]; then
             [ -n "$HOOK" ] || { echo "::error::VERCEL_DEPLOY_HOOK が未設定です"; exit 1; }
             curl -fsS -X POST "$HOOK" && echo "再デプロイを開始しました"
+          else
+            echo "対象なし"
           fi
