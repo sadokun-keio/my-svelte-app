@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	type P = { slug: string; title: string; date: string; tags: string[]; description: string; draft: boolean; body: string };
+	type P = { slug: string; title: string; date: string; tags: string[]; description: string; draft: boolean; publishAt: string; body: string };
+	type Mode = 'public' | 'private' | 'scheduled';
 	const today = () => new Date().toLocaleDateString('sv-SE');
-	const blank = (): P => ({ slug: '', title: '', date: today(), tags: [], description: '', draft: false, body: '' });
+	const blank = (): P => ({ slug: '', title: '', date: today(), tags: [], description: '', draft: false, publishAt: '', body: '' });
+	// datetime-local <-> JST ISO
+	const toLocal = (iso: string) => (iso ? new Date(Date.parse(iso) + 9 * 3600e3).toISOString().slice(0, 16) : '');
+	const fromLocal = (v: string) => (v ? v + ':00+09:00' : '');
+	const modeOf = (p: P): Mode => (p.draft ? 'private' : p.publishAt && Date.parse(p.publishAt) > Date.now() ? 'scheduled' : 'public');
+	const modeLabel = { public: '', private: ' ・非公開', scheduled: ' ・予約' };
 
 	let posts = $state<P[]>([]);
 	let cur = $state<P>(blank());
@@ -12,6 +18,8 @@
 	let preview = $state('');
 	let status = $state('');
 	let dirty = $state(false);
+	let mode = $state<Mode>('public');
+	let schedule = $state('');
 	let textarea: HTMLTextAreaElement;
 	let timer: ReturnType<typeof setTimeout>;
 
@@ -20,7 +28,7 @@
 
 	function open(p: P) {
 		if (dirty && !confirm('保存していない変更があります。破棄しますか？')) return;
-		cur = { ...p }; oldSlug = p.slug; tagText = p.tags.join(', '); dirty = false; renderPreview();
+		cur = { ...p }; oldSlug = p.slug; mode = p.draft ? 'private' : p.publishAt ? 'scheduled' : 'public'; schedule = toLocal(p.publishAt); tagText = p.tags.join(', '); dirty = false; renderPreview();
 	}
 	function newPost() { open(blank()); oldSlug = ''; }
 
@@ -34,11 +42,15 @@
 		cur.tags = tagText.split(',').map((t) => t.trim()).filter(Boolean);
 		if (!cur.title) return (status = '⚠ タイトルを入力してください');
 		if (!cur.slug) return (status = '⚠ URL名（slug）を入力してください');
+		if (mode === 'scheduled' && !schedule) return (status = '⚠ 予約日時を入力してください');
+		cur.draft = mode === 'private';
+		cur.publishAt = mode === 'scheduled' ? fromLocal(schedule) : '';
+		if (mode === 'scheduled') cur.date = schedule.slice(0, 10);
 		const r = await fetch('/admin/api/posts', { method: 'POST', body: JSON.stringify({ ...cur, oldSlug }) });
 		if (!r.ok) return (status = '⚠ ' + (await r.json()).message);
 		const { slug } = await r.json();
 		cur.slug = slug; oldSlug = slug; dirty = false;
-		status = '✓ 保存しました（まだ公開されていません）';
+		status = mode === 'scheduled' ? `✓ 保存しました（公開ボタンを押すと ${schedule.replace('T', ' ')} に自動公開）` : mode === 'private' ? '✓ 保存しました（非公開：公開ボタンでサイトから非表示）' : '✓ 保存しました（まだ公開されていません）';
 		await refresh();
 	}
 
@@ -77,6 +89,20 @@
 		insert(out);
 		textarea.setSelectionRange(ls, ls + out.length);
 	}
+	// 選択範囲（なければカーソル行）を配置ブロックで囲む。既存の配置ブロックは付け替え
+	function align(kind: 'left' | 'center' | 'right' | 'span') {
+		let s = textarea.selectionStart, e = textarea.selectionEnd;
+		const b = cur.body;
+		if (s === e) { s = b.lastIndexOf('\n', s - 1) + 1; const n = b.indexOf('\n', e); e = n < 0 ? b.length : n; }
+		let inner = b.slice(s, e).trim();
+		const m = inner.match(/^<div class="align-\w+">\s*([\s\S]*?)\s*<\/div>$/);
+		if (m) inner = m[1];
+		const before = s > 0 && b[s - 1] !== '\n' ? '\n\n' : s > 1 && b[s - 2] !== '\n' ? '\n' : '';
+		const out = kind === 'left' ? inner : `${before}<div class="align-${kind}">\n\n${inner || 'テキスト'}\n\n</div>\n`;
+		textarea.focus();
+		textarea.setSelectionRange(s, e);
+		insert(out);
+	}
 	function wrap(a: string, b = a) {
 		const s = textarea.selectionStart, e = textarea.selectionEnd;
 		insert(a + (cur.body.slice(s, e) || 'テキスト') + b);
@@ -111,7 +137,7 @@
 		<ul>
 			{#each posts as p}
 				<li><button class:active={p.slug === oldSlug} onclick={() => open(p)}>
-					<b>{p.title}</b><small>{p.date}{p.draft ? ' ・下書き' : ''}</small>
+					<b>{p.title}</b><small>{p.date}{modeLabel[modeOf(p)]}</small>
 				</button></li>
 			{:else}<li class="empty">記事はまだありません</li>{/each}
 		</ul>
@@ -125,7 +151,14 @@
 				<label>日付 <input type="date" bind:value={cur.date} oninput={changed} /></label>
 				<label>URL名 <input placeholder="my-first-post" bind:value={cur.slug} onfocus={autoSlug} oninput={changed} /></label>
 				<label>タグ <input placeholder="日記, 大学" bind:value={tagText} oninput={changed} /></label>
-				<label class="chk"><input type="checkbox" bind:checked={cur.draft} onchange={changed} /> 下書き</label>
+				<label>公開設定
+					<select bind:value={mode} onchange={changed}>
+						<option value="public">公開</option>
+						<option value="private">非公開</option>
+						<option value="scheduled">予約投稿</option>
+					</select>
+				</label>
+				{#if mode === 'scheduled'}<label>公開日時 <input type="datetime-local" bind:value={schedule} oninput={changed} /></label>{/if}
 			</div>
 			<input placeholder="概要（一覧に表示される一文）" bind:value={cur.description} oninput={changed} />
 		</div>
@@ -138,6 +171,11 @@
 			<button onclick={() => prefixLines('- ')}>リスト</button>
 			<button onclick={() => prefixLines('> ')}>引用</button>
 			<button onclick={() => wrap('\n```\n', '\n```\n')}>コード</button>
+			<span class="sep"></span>
+			<button title="左揃え（配置を解除）" onclick={() => align('left')}>⯇ 左</button>
+			<button title="中央揃え" onclick={() => align('center')}>中央</button>
+			<button title="右揃え" onclick={() => align('right')}>右 ⯈</button>
+			<button title="両端揃え・画像は横幅いっぱい" onclick={() => align('span')}>⇔ スパン</button>
 			<label class="btn">🖼 画像<input type="file" accept="image/*" multiple hidden onchange={(e) => upload(e.currentTarget.files)} /></label>
 			<span class="spacer"></span>
 			{#if oldSlug}<button class="danger" onclick={remove}>削除</button>{/if}
@@ -172,10 +210,11 @@
 	.fields { display: grid; gap: 0.5rem; }
 	.row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
 	.row label { display: flex; gap: 0.3rem; align-items: center; font-size: 0.85rem; }
-	input:not([type='checkbox']), textarea { background: #fff; color: inherit; border: 1px solid rgba(140, 160, 201, 0.35); border-radius: 8px; padding: 0.45rem 0.6rem; font: inherit; }
+	input:not([type='checkbox']), select, textarea { background: #fff; color: inherit; border: 1px solid rgba(140, 160, 201, 0.35); border-radius: 8px; padding: 0.45rem 0.6rem; font: inherit; }
 	input.title { font-size: 1.4rem; font-weight: 700; }
 	.toolbar { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 	.spacer { flex: 1; }
+	.sep { width: 1px; background: rgba(140, 160, 201, 0.35); margin: 0 0.2rem; }
 	button, .btn { background: rgba(140, 160, 201, 0.15); color: inherit; border: 1px solid rgba(140, 160, 201, 0.35); border-radius: 8px; padding: 0.35rem 0.75rem; cursor: pointer; font: inherit; font-size: 0.9rem; }
 	button:hover, .btn:hover { background: rgba(140, 160, 201, 0.3); }
 	.primary { background: #8ca0c9; color: #111; font-weight: 700; }

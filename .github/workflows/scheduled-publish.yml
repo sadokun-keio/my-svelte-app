@@ -1,0 +1,21 @@
+name: 予約投稿の公開チェック
+on:
+  schedule:
+    - cron: '*/30 * * * *' # 30分ごと（GitHubの都合で数分〜十数分遅れることあり）
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 予約時刻を過ぎた記事があれば再デプロイ
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          info=$(curl -fsSL "https://sadokun.blue/build-info.json?t=$(date +%s)") || { echo "build-info.json を取得できません"; exit 0; }
+          echo "$info"
+          due=$(echo "$info" | jq --arg now "$(date -u +%s)" '[.pending[] | select((.publishAt | sub("\\+09:00$"; "") | strptime("%Y-%m-%dT%H:%M:%S") | mktime) - 32400 <= ($now | tonumber))] | length')
+          echo "公開時刻を過ぎた予約記事: $due 件"
+          if [ "$due" -gt 0 ]; then
+            [ -n "$HOOK" ] || { echo "::error::VERCEL_DEPLOY_HOOK が未設定です"; exit 1; }
+            curl -fsS -X POST "$HOOK" && echo "再デプロイを開始しました"
+          fi

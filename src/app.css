@@ -1,3 +1,11 @@
 @import 'tailwindcss';
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton/themes/cerberus';
+
+/* ブログ本文の段落配置（管理画面の 左/中央/右/スパン ボタン） */
+.md .align-center { text-align: center; }
+.md .align-right { text-align: right; }
+.md .align-span { text-align: justify; text-justify: inter-character; }
+.md .align-center img, .md .align-right img { display: inline-block; }
+.md .align-span img { display: block; width: 100%; }
+.md .align-span p:has(> img:only-child) { text-align: center; }

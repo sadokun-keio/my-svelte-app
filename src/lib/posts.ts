@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 
-export type PostMeta = { slug: string; title: string; date: string; tags: string[]; description: string; draft: boolean };
+export type PostMeta = { slug: string; title: string; date: string; tags: string[]; description: string; draft: boolean; publishAt: string };
 export type Post = PostMeta & { body: string; html: string };
 
 export function parseFrontmatter(raw: string) {
@@ -23,6 +23,7 @@ export function toPost(slug: string, raw: string): Post {
 		description: data.description || '',
 		tags: (data.tags || '').replace(/^\[|\]$/g, '').split(',').map((t) => t.trim()).filter(Boolean),
 		draft: data.draft === 'true',
+		publishAt: data.publishAt || '',
 		body,
 		html: marked.parse(body, { async: false, breaks: true }) as string
 	};
@@ -33,11 +34,23 @@ const files = import.meta.glob('/src/posts/*.md', { query: '?raw', import: 'defa
 export function getPosts(includeDrafts = false): Post[] {
 	return Object.entries(files)
 		.map(([path, raw]) => toPost(path.split('/').pop()!.replace(/\.md$/, ''), raw))
-		.filter((p) => includeDrafts || !p.draft)
+		.filter((p) => includeDrafts || isPublic(p))
 		.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function serialize(p: { title: string; date: string; tags: string[]; description: string; draft: boolean; body: string }) {
+/** 非公開でなく、予約日時（あれば）を過ぎている記事だけ公開 */
+export function isPublic(p: { draft: boolean; publishAt?: string }, now = Date.now()) {
+	if (p.draft) return false;
+	return !p.publishAt || !(Date.parse(p.publishAt) > now);
+}
+
+/** 予約時刻がまだ来ていない記事（ビルド時点） */
+export function pendingPosts(now = Date.now()) {
+	return getPosts(true).filter((p) => !p.draft && p.publishAt && Date.parse(p.publishAt) > now);
+}
+
+export function serialize(p: { title: string; date: string; tags: string[]; description: string; draft: boolean; publishAt?: string; body: string }) {
 	const q = (s: string) => JSON.stringify(s);
-	return `---\ntitle: ${q(p.title)}\ndate: ${p.date}\ntags: [${p.tags.join(', ')}]\ndescription: ${q(p.description)}\ndraft: ${p.draft}\n---\n\n${p.body.trim()}\n`;
+	const at = p.publishAt ? `publishAt: ${p.publishAt}\n` : '';
+	return `---\ntitle: ${q(p.title)}\ndate: ${p.date}\ntags: [${p.tags.join(', ')}]\ndescription: ${q(p.description)}\ndraft: ${p.draft}\n${at}---\n\n${p.body.trim()}\n`;
 }
